@@ -11,6 +11,7 @@ Notifier is a lightweight notification plugin inspired by Better Notifications f
   - Trigger
   - Email recipients (multi-select real WP users)
   - Send to post author
+  - From email (optional)
   - Subject
   - Message
 - Token replacement in subject/message:

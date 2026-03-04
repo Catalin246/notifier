@@ -106,6 +106,7 @@ final class Notifier_Admin {
 		$enabled        = get_post_meta($post->ID, Notifier_Constants::META_ENABLED, true);
 		$trigger        = get_post_meta($post->ID, Notifier_Constants::META_TRIGGER, true);
 		$recipient_ids  = get_post_meta($post->ID, Notifier_Constants::META_RECIPIENT_USERS, true);
+		$from_email     = get_post_meta($post->ID, Notifier_Constants::META_FROM_EMAIL, true);
 		$subject        = get_post_meta($post->ID, Notifier_Constants::META_SUBJECT, true);
 		$message        = get_post_meta($post->ID, Notifier_Constants::META_MESSAGE, true);
 		$send_to_author = get_post_meta($post->ID, Notifier_Constants::META_SEND_TO_AUTHOR, true);
@@ -118,6 +119,9 @@ final class Notifier_Admin {
 		}
 		if ('' === $subject) {
 			$subject = $defaults['subject'];
+		}
+		if ('' === $from_email) {
+			$from_email = $defaults['from_email'];
 		}
 		if ('' === $message) {
 			$message = $defaults['message'];
@@ -180,6 +184,12 @@ final class Notifier_Admin {
 		</p>
 
 		<p>
+			<label for="notifier_from_email"><strong><?php esc_html_e('From Email', 'notifier'); ?></strong></label><br />
+			<input type="email" class="widefat" id="notifier_from_email" name="notifier_from_email" value="<?php echo esc_attr($from_email); ?>" />
+			<span class="description"><?php esc_html_e('Optional. If set, emails are sent with this From address.', 'notifier'); ?></span>
+		</p>
+
+		<p>
 			<label for="notifier_subject"><strong><?php esc_html_e('Email Subject', 'notifier'); ?></strong></label><br />
 			<input type="text" class="widefat" id="notifier_subject" name="notifier_subject" value="<?php echo esc_attr($subject); ?>" />
 		</p>
@@ -226,6 +236,7 @@ final class Notifier_Admin {
 			: array();
 		$recipient_ids = array_values(array_filter($recipient_ids));
 
+		$from_email     = isset($_POST['notifier_from_email']) ? sanitize_email(wp_unslash($_POST['notifier_from_email'])) : '';
 		$subject        = isset($_POST['notifier_subject']) ? sanitize_text_field(wp_unslash($_POST['notifier_subject'])) : '';
 		$message        = isset($_POST['notifier_message']) ? wp_kses_post(wp_unslash($_POST['notifier_message'])) : '';
 		$enabled        = isset($_POST['notifier_enabled']) ? 1 : 0;
@@ -234,6 +245,7 @@ final class Notifier_Admin {
 		update_post_meta($post_id, Notifier_Constants::META_ENABLED, $enabled);
 		update_post_meta($post_id, Notifier_Constants::META_TRIGGER, $trigger);
 		update_post_meta($post_id, Notifier_Constants::META_RECIPIENT_USERS, $recipient_ids);
+		update_post_meta($post_id, Notifier_Constants::META_FROM_EMAIL, $from_email);
 		update_post_meta($post_id, Notifier_Constants::META_SUBJECT, $subject);
 		update_post_meta($post_id, Notifier_Constants::META_MESSAGE, $message);
 		update_post_meta($post_id, Notifier_Constants::META_SEND_TO_AUTHOR, $send_to_author);
@@ -248,6 +260,7 @@ final class Notifier_Admin {
 			'trigger'        => Notifier_Constants::TRIGGER_PENDING_NEW_POST,
 			'recipient_ids'  => array(),
 			'send_to_author' => 0,
+			'from_email'     => '',
 			'subject'        => '',
 			'message'        => '',
 		);

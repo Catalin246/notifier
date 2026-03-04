@@ -93,6 +93,7 @@ final class Notifier_Dispatcher {
 		foreach ($notifications as $notification) {
 			$recipient_ids  = get_post_meta($notification->ID, Notifier_Constants::META_RECIPIENT_USERS, true);
 			$legacy_to      = (string) get_post_meta($notification->ID, Notifier_Constants::META_TO, true);
+			$from_email     = (string) get_post_meta($notification->ID, Notifier_Constants::META_FROM_EMAIL, true);
 			$subject        = (string) get_post_meta($notification->ID, Notifier_Constants::META_SUBJECT, true);
 			$message        = (string) get_post_meta($notification->ID, Notifier_Constants::META_MESSAGE, true);
 			$send_to_author = (int) get_post_meta($notification->ID, Notifier_Constants::META_SEND_TO_AUTHOR, true);
@@ -118,10 +119,19 @@ final class Notifier_Dispatcher {
 				continue;
 			}
 
+			$headers = array();
+			if ('' !== $from_email) {
+				$from_email = sanitize_email($this->template->replace_tokens($from_email, $post));
+				if ('' !== $from_email && is_email($from_email)) {
+					$headers[] = 'From: ' . $from_email;
+				}
+			}
+
 			wp_mail(
 				$resolved_to,
 				$this->template->replace_tokens($subject, $post),
-				$this->template->replace_tokens($message, $post)
+				$this->template->replace_tokens($message, $post),
+				$headers
 			);
 		}
 	}
