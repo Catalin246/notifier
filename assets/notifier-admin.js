@@ -1,35 +1,39 @@
 (function($) {
 	$(function() {
-		var $wrap = $('.notifier-user-picker');
-		if (!$wrap.length) {
+		var $wraps = $('.notifier-user-picker');
+		if (!$wraps.length) {
 			return;
 		}
 
-		var $toggle = $wrap.find('.notifier-user-picker__toggle');
-		var $panel = $wrap.find('.notifier-user-picker__panel');
-		var $checks = $wrap.find('input[type="checkbox"]');
-		var selectLabel = (window.notifierAdminI18n && window.notifierAdminI18n.selectRecipients) || 'Select recipients';
-		var suffixLabel = (window.notifierAdminI18n && window.notifierAdminI18n.selectedSuffix) || 'user(s) selected';
+		$wraps.each(function() {
+			var $wrap = $(this);
+			var $toggle = $wrap.find('.notifier-user-picker__toggle');
+			var $panel = $wrap.find('.notifier-user-picker__panel');
+			var $checks = $wrap.find('input[type="checkbox"]');
 
-		function updateLabel() {
-			var count = $checks.filter(':checked').length;
-			$toggle.text(count ? count + ' ' + suffixLabel : selectLabel);
-		}
+			var selectLabel = $toggle.data('empty-label') || 'Select';
+			var suffixLabel = $toggle.data('selected-suffix') || 'selected';
 
-		$toggle.on('click', function(e) {
-			e.preventDefault();
-			$panel.toggle();
-			$toggle.attr('aria-expanded', $panel.is(':visible') ? 'true' : 'false');
-		});
-
-		$(document).on('click', function(e) {
-			if (!$wrap.is(e.target) && $wrap.has(e.target).length === 0) {
-				$panel.hide();
-				$toggle.attr('aria-expanded', 'false');
+			function updateLabel() {
+				var count = $checks.filter(':checked').length;
+				$toggle.text(count ? count + ' ' + suffixLabel : selectLabel);
 			}
-		});
 
-		$checks.on('change', updateLabel);
-		updateLabel();
+			$toggle.on('click', function(e) {
+				e.preventDefault();
+				$panel.toggle();
+				$toggle.attr('aria-expanded', $panel.is(':visible') ? 'true' : 'false');
+			});
+
+			$(document).on('click', function(e) {
+				if (!$wrap.is(e.target) && $wrap.has(e.target).length === 0) {
+					$panel.hide();
+					$toggle.attr('aria-expanded', 'false');
+				}
+			});
+
+			$checks.on('change', updateLabel);
+			updateLabel();
+		});
 	});
 })(jQuery);

@@ -91,6 +91,13 @@ final class Notifier_Dispatcher {
 		}
 
 		foreach ($notifications as $notification) {
+			$target_categories = $this->normalize_target_categories(
+				get_post_meta($notification->ID, Notifier_Constants::META_POST_CATEGORY, true)
+			);
+			if (!empty($target_categories) && !has_category($target_categories, $post)) {
+				continue;
+			}
+
 			$recipient_ids  = get_post_meta($notification->ID, Notifier_Constants::META_RECIPIENT_USERS, true);
 			$legacy_to      = (string) get_post_meta($notification->ID, Notifier_Constants::META_TO, true);
 			$from_email     = (string) get_post_meta($notification->ID, Notifier_Constants::META_FROM_EMAIL, true);
@@ -134,5 +141,29 @@ final class Notifier_Dispatcher {
 				$headers
 			);
 		}
+	}
+
+	/**
+	 * Normalize category meta to a list of term IDs.
+	 * Empty array means "any category".
+	 *
+	 * @param mixed $raw Raw meta value.
+	 * @return array<int,int>
+	 */
+	private function normalize_target_categories($raw) {
+		if (is_array($raw)) {
+			$ids = array_map('absint', $raw);
+			return array_values(array_filter($ids));
+		}
+
+		// Backward compatibility for old single-select string values.
+		if (is_string($raw) && '' !== $raw && 'any' !== $raw) {
+			$id = absint($raw);
+			if ($id > 0) {
+				return array($id);
+			}
+		}
+
+		return array();
 	}
 }

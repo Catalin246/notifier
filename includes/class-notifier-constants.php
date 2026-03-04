@@ -12,6 +12,7 @@ final class Notifier_Constants {
 	const META_TO              = '_notifier_to';
 	const META_RECIPIENT_USERS = '_notifier_recipient_users';
 	const META_FROM_EMAIL      = '_notifier_from_email';
+	const META_POST_CATEGORY   = '_notifier_post_category';
 	const META_SUBJECT         = '_notifier_subject';
 	const META_MESSAGE         = '_notifier_message';
 	const META_SEND_TO_AUTHOR  = '_notifier_send_to_author';

@@ -9,6 +9,7 @@ Notifier is a lightweight notification plugin inspired by Better Notifications f
 - Notification fields:
   - Enabled
   - Trigger
+  - Post categories selector (multi-select)
   - Email recipients (multi-select real WP users)
   - Send to post author
   - From email (optional)

@@ -18,6 +18,79 @@ final class Notifier_Admin {
 		add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
 		add_action('add_meta_boxes', array($this, 'register_meta_boxes'));
 		add_action('save_post_' . Notifier_Constants::POST_TYPE, array($this, 'save_notification_meta'));
+		add_filter('manage_' . Notifier_Constants::POST_TYPE . '_posts_columns', array($this, 'add_list_columns'));
+		add_action('manage_' . Notifier_Constants::POST_TYPE . '_posts_custom_column', array($this, 'render_list_column'), 10, 2);
+		add_filter('views_edit-' . Notifier_Constants::POST_TYPE, array($this, 'hide_list_stats'));
+	}
+
+	/**
+	 * Hide status stats/filters (All, Published, Trash...) on notifications list.
+	 *
+	 * @param array<string,string> $views List views.
+	 * @return array<string,string>
+	 */
+	public function hide_list_stats($views) {
+		return array();
+	}
+
+	/**
+	 * @param array<string,string> $columns Existing columns.
+	 * @return array<string,string>
+	 */
+	public function add_list_columns($columns) {
+		$updated = array();
+
+		foreach ($columns as $key => $label) {
+			$updated[$key] = $label;
+			if ('title' === $key) {
+				$updated['notifier_trigger']    = __('Trigger', 'notifier');
+				$updated['notifier_subject']    = __('Email Subject', 'notifier');
+				$updated['notifier_categories'] = __('Post Categories', 'notifier');
+			}
+		}
+
+		return $updated;
+	}
+
+	/**
+	 * @param string $column Column key.
+	 * @param int    $post_id Post ID.
+	 */
+	public function render_list_column($column, $post_id) {
+		if ('notifier_trigger' === $column) {
+			$trigger  = (string) get_post_meta($post_id, Notifier_Constants::META_TRIGGER, true);
+			$triggers = $this->trigger_registry->all();
+			echo isset($triggers[$trigger]) ? esc_html($triggers[$trigger]) : '&mdash;';
+			return;
+		}
+
+		if ('notifier_subject' === $column) {
+			$subject = (string) get_post_meta($post_id, Notifier_Constants::META_SUBJECT, true);
+			echo '' !== $subject ? esc_html($subject) : '&mdash;';
+			return;
+		}
+
+		if ('notifier_categories' === $column) {
+			$categories = $this->normalize_category_ids(
+				get_post_meta($post_id, Notifier_Constants::META_POST_CATEGORY, true),
+				array()
+			);
+
+			if (empty($categories)) {
+				echo esc_html__('Any category', 'notifier');
+				return;
+			}
+
+			$names = array();
+			foreach ($categories as $term_id) {
+				$term = get_term($term_id, 'category');
+				if ($term && !is_wp_error($term)) {
+					$names[] = $term->name;
+				}
+			}
+
+			echo !empty($names) ? esc_html(implode(', ', $names)) : '&mdash;';
+		}
 	}
 
 	/**
@@ -75,6 +148,7 @@ final class Notifier_Admin {
 		$trigger        = get_post_meta($post->ID, Notifier_Constants::META_TRIGGER, true);
 		$recipient_ids  = get_post_meta($post->ID, Notifier_Constants::META_RECIPIENT_USERS, true);
 		$from_email     = get_post_meta($post->ID, Notifier_Constants::META_FROM_EMAIL, true);
+		$post_categories = get_post_meta($post->ID, Notifier_Constants::META_POST_CATEGORY, true);
 		$subject        = get_post_meta($post->ID, Notifier_Constants::META_SUBJECT, true);
 		$message        = get_post_meta($post->ID, Notifier_Constants::META_MESSAGE, true);
 		$send_to_author = get_post_meta($post->ID, Notifier_Constants::META_SEND_TO_AUTHOR, true);
@@ -91,6 +165,7 @@ final class Notifier_Admin {
 		if ('' === $from_email) {
 			$from_email = $defaults['from_email'];
 		}
+		$post_categories = $this->normalize_category_ids($post_categories, $defaults['post_categories']);
 		if ('' === $message) {
 			$message = $defaults['message'];
 		}
@@ -107,6 +182,11 @@ final class Notifier_Admin {
 				'fields'  => array('ID', 'display_name', 'user_email'),
 				'orderby' => 'display_name',
 				'order'   => 'ASC',
+			)
+		);
+		$categories = get_categories(
+			array(
+				'hide_empty' => false,
 			)
 		);
 
@@ -129,9 +209,25 @@ final class Notifier_Admin {
 		</p>
 
 		<p>
+			<label><strong><?php esc_html_e('Post Categories', 'notifier'); ?></strong></label><br />
+			<div class="notifier-user-picker notifier-category-picker">
+				<button type="button" class="button notifier-user-picker__toggle" aria-expanded="false" data-empty-label="<?php echo esc_attr__('Select categories', 'notifier'); ?>" data-selected-suffix="<?php echo esc_attr__('category(ies) selected', 'notifier'); ?>"><?php esc_html_e('Select categories', 'notifier'); ?></button>
+				<div class="notifier-user-picker__panel">
+					<?php foreach ($categories as $category) : ?>
+						<label class="notifier-user-picker__item">
+							<input type="checkbox" name="notifier_post_categories[]" value="<?php echo esc_attr($category->term_id); ?>" <?php checked(in_array((int) $category->term_id, $post_categories, true)); ?> />
+							<?php echo esc_html($category->name); ?>
+						</label>
+					<?php endforeach; ?>
+				</div>
+			</div>
+			<span class="description"><?php esc_html_e('Select one or more categories. If none are selected, notification applies to any category.', 'notifier'); ?></span>
+		</p>
+
+		<p>
 			<label><strong><?php esc_html_e('Email Recipients', 'notifier'); ?></strong></label><br />
 			<div class="notifier-user-picker">
-				<button type="button" class="button notifier-user-picker__toggle" aria-expanded="false"><?php esc_html_e('Select recipients', 'notifier'); ?></button>
+				<button type="button" class="button notifier-user-picker__toggle" aria-expanded="false" data-empty-label="<?php echo esc_attr__('Select recipients', 'notifier'); ?>" data-selected-suffix="<?php echo esc_attr__('user(s) selected', 'notifier'); ?>"><?php esc_html_e('Select recipients', 'notifier'); ?></button>
 				<div class="notifier-user-picker__panel">
 					<?php foreach ($all_users as $user) : ?>
 						<label class="notifier-user-picker__item">
@@ -198,6 +294,10 @@ final class Notifier_Admin {
 		if (!$this->trigger_registry->is_valid($trigger)) {
 			$trigger = Notifier_Constants::TRIGGER_PENDING_NEW_POST;
 		}
+		$post_categories = isset($_POST['notifier_post_categories']) && is_array($_POST['notifier_post_categories'])
+			? array_map('absint', wp_unslash($_POST['notifier_post_categories']))
+			: array();
+		$post_categories = array_values(array_filter($post_categories, array($this, 'is_valid_category_id')));
 
 		$recipient_ids = isset($_POST['notifier_recipient_users']) && is_array($_POST['notifier_recipient_users'])
 			? array_map('absint', wp_unslash($_POST['notifier_recipient_users']))
@@ -214,6 +314,7 @@ final class Notifier_Admin {
 		update_post_meta($post_id, Notifier_Constants::META_TRIGGER, $trigger);
 		update_post_meta($post_id, Notifier_Constants::META_RECIPIENT_USERS, $recipient_ids);
 		update_post_meta($post_id, Notifier_Constants::META_FROM_EMAIL, $from_email);
+		update_post_meta($post_id, Notifier_Constants::META_POST_CATEGORY, $post_categories);
 		update_post_meta($post_id, Notifier_Constants::META_SUBJECT, $subject);
 		update_post_meta($post_id, Notifier_Constants::META_MESSAGE, $message);
 		update_post_meta($post_id, Notifier_Constants::META_SEND_TO_AUTHOR, $send_to_author);
@@ -229,9 +330,40 @@ final class Notifier_Admin {
 			'recipient_ids'  => array(),
 			'send_to_author' => 0,
 			'from_email'     => '',
+			'post_categories'=> array(),
 			'subject'        => '',
 			'message'        => '',
 		);
+	}
+
+	/**
+	 * @param mixed            $raw Raw category value from DB.
+	 * @param array<int,int>   $fallback Default value.
+	 * @return array<int,int>
+	 */
+	private function normalize_category_ids($raw, $fallback) {
+		if (is_array($raw)) {
+			$ids = array_map('absint', $raw);
+			return array_values(array_filter($ids, array($this, 'is_valid_category_id')));
+		}
+
+		// Backward compatibility for older single-select storage.
+		if (is_string($raw) && '' !== $raw && 'any' !== $raw) {
+			$id = absint($raw);
+			if ($this->is_valid_category_id($id)) {
+				return array($id);
+			}
+		}
+
+		return $fallback;
+	}
+
+	/**
+	 * @param int $term_id Category term ID.
+	 * @return bool
+	 */
+	private function is_valid_category_id($term_id) {
+		return $term_id > 0 && (bool) term_exists($term_id, 'category');
 	}
 
 	/**
