@@ -15,22 +15,28 @@ final class Notifier_Dispatcher {
 	}
 
 	public function hooks() {
-		add_action('pending_post', array($this, 'on_pending_post'), 10, 2);
+		add_action('wp_after_insert_post', array($this, 'on_post_inserted'), 10, 4);
 		add_action('transition_post_status', array($this, 'on_pending_to_publish'), 10, 3);
 	}
 
 	/**
-	 * @param int $post_id Post ID.
-	 * @param WP_Post $post Post object.
+	 * Fires after post insert/update to detect newly created pending posts.
+	 *
+	 * @param int          $post_id     Post ID.
+	 * @param WP_Post      $post        Post object.
+	 * @param bool         $update      Whether this is an existing post update.
+	 * @param WP_Post|null $post_before Previous post object before update.
 	 */
-	public function on_pending_post($post_id, $post) {
+	public function on_post_inserted($post_id, $post, $update, $post_before) {
 		if (!$post instanceof WP_Post || 'post' !== $post->post_type) {
 			return;
 		}
 
-		$created = get_post_time('U', true, $post);
-		$now     = current_time('timestamp', true);
-		if (($now - $created) > 120) {
+		if ($update) {
+			return;
+		}
+
+		if ('pending' !== $post->post_status) {
 			return;
 		}
 

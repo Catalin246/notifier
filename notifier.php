@@ -2,9 +2,8 @@
 /**
  * Plugin Name: Notifier
  * Description: Lightweight notification engine inspired by Better Notifications for WP with custom trigger support.
- * Version: 0.3.0
- * Author: Notifier
- * License: GPL-2.0-or-later
+ * Version: 1.0.0
+ * Author: Venture Capital Team
  */
 
 if (!defined('ABSPATH')) {
